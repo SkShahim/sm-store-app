@@ -7,8 +7,8 @@ const { protect, ownerOnly } = require('../middleware/auth');
 
 router.get('/', getProducts);
 router.get('/:id', getProduct);
-router.post('/', protect, ownerOnly, createProduct);
-router.put('/:id', protect, ownerOnly, updateProduct);
-router.delete('/:id', protect, ownerOnly, deleteProduct);
+router.post('/', createProduct);
+router.put('/:id', updateProduct);
+router.delete('/:id', deleteProduct);
 
 module.exports = router;
