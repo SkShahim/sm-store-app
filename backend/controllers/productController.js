@@ -1,6 +1,5 @@
 const Product = require('../models/Product');
 
-// GET /api/products  (public - customers browse catalog)
 exports.getProducts = async (req, res) => {
   try {
     const { category, search } = req.query;
@@ -15,7 +14,6 @@ exports.getProducts = async (req, res) => {
   }
 };
 
-// GET /api/products/:id
 exports.getProduct = async (req, res) => {
   try {
     const product = await Product.findById(req.params.id);
@@ -26,17 +24,15 @@ exports.getProduct = async (req, res) => {
   }
 };
 
-// POST /api/products  (owner only)
 exports.createProduct = async (req, res) => {
   try {
-    const product = await Product.create({ ...req.body, createdBy: req.user._id });
+    const product = await Product.create(req.body);
     res.status(201).json({ success: true, product });
   } catch (err) {
     res.status(400).json({ success: false, message: err.message });
   }
 };
 
-// PUT /api/products/:id  (owner only - edit price/quantity anytime)
 exports.updateProduct = async (req, res) => {
   try {
     const product = await Product.findByIdAndUpdate(req.params.id, req.body, {
@@ -50,7 +46,6 @@ exports.updateProduct = async (req, res) => {
   }
 };
 
-// DELETE /api/products/:id  (owner only)
 exports.deleteProduct = async (req, res) => {
   try {
     const product = await Product.findByIdAndDelete(req.params.id);
