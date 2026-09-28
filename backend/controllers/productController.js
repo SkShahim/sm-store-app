@@ -1,56 +1,48 @@
-const Product = require('../models/Product');
+const User = require('../models/User');
+const generateToken = require('../utils/generateToken');
 
-exports.getProducts = async (req, res) => {
+exports.register = async (req, res) => {
   try {
-    const { category, search } = req.query;
-    const filter = { isAvailable: true };
-    if (category) filter.category = category;
-    if (search) filter.name = { $regex: search, $options: 'i' };
+    const { name, phone, password, ownerCode } = req.body;
+    const exists = await User.findOne({ phone });
+    if (exists) return res.status(400).json({ success: false, message: 'Phone already registered' });
 
-    const products = await Product.find(filter).sort({ createdAt: -1 });
-    res.json({ success: true, count: products.length, products });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
-  }
-};
-
-exports.getProduct = async (req, res) => {
-  try {
-    const product = await Product.findById(req.params.id);
-    if (!product) return res.status(404).json({ success: false, message: 'Product not found' });
-    res.json({ success: true, product });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
-  }
-};
-
-exports.createProduct = async (req, res) => {
-  try {
-    const product = await Product.create(req.body);
-    res.status(201).json({ success: true, product });
-  } catch (err) {
-    res.status(400).json({ success: false, message: err.message });
-  }
-};
-
-exports.updateProduct = async (req, res) => {
-  try {
-    const product = await Product.findByIdAndUpdate(req.params.id, req.body, {
-      new: true,
-      runValidators: true
+    const isOwner = Boolean(process.env.OWNER_CODE) && ownerCode === process.env.OWNER_CODE;
+    const user = await User.create({ name, phone, password, role: isOwner ? 'owner' : 'customer' });
+    res.status(201).json({
+      success: true,
+      user: { id: user._id, name: user.name, phone: user.phone, role: user.role },
+      token: generateToken(user._id)
     });
-    if (!product) return res.status(404).json({ success: false, message: 'Product not found' });
-    res.json({ success: true, product });
   } catch (err) {
-    res.status(400).json({ success: false, message: err.message });
+    res.status(500).json({ success: false, message: err.message });
   }
 };
 
-exports.deleteProduct = async (req, res) => {
+exports.login = async (req, res) => {
   try {
-    const product = await Product.findByIdAndDelete(req.params.id);
-    if (!product) return res.status(404).json({ success: false, message: 'Product not found' });
-    res.json({ success: true, message: 'Product deleted' });
+    const { phone, password } = req.body;
+    const user = await User.findOne({ phone });
+    if (!user || !(await user.matchPassword(password))) {
+      return res.status(401).json({ success: false, message: 'Invalid phone or password' });
+    }
+    res.json({
+      success: true,
+      user: { id: user._id, name: user.name, phone: user.phone, role: user.role, addresses: user.addresses },
+      token: generateToken(user._id)
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+exports.addAddress = async (req, res) => {
+  try {
+    const { label, fullAddress, pincode, landmark } = req.body;
+    const user = await User.findById(req.user._id);
+    user.addresses.push({ label, fullAddress, pincode, landmark });
+    await user.save();
+    res.status(201).json({ success: true, addresses: user.addresses });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
